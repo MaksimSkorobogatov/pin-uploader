@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"path/filepath"
 	"time"
 
 	"go.uber.org/zap"
@@ -14,7 +15,8 @@ import (
 )
 
 func main() {
-	configPath := flag.String("config", "configs/client.yaml", "path to client config")
+	defaultConfig := defaultClientConfigPath()
+	configPath := flag.String("config", defaultConfig, "path to client config")
 	flag.Parse()
 
 	logger, _ := zap.NewProduction()
@@ -51,4 +53,12 @@ func main() {
 		}
 		fmt.Printf("✅ %s -> ID %d | GUID %s | Title: %s\n", p, res.Meta.ID, res.Meta.GUID, res.Meta.Title)
 	}
+}
+
+func defaultClientConfigPath() string {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return "configs/client.yaml"
+	}
+	return filepath.Join(home, ".config", "pin-uploader", "config.yaml")
 }

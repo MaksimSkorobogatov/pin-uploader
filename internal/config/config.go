@@ -14,8 +14,8 @@ type ServerConfig struct {
 	EncryptionKey string  `yaml:"encryption_key"`
 	PublicBaseURL string  `yaml:"public_base_url"`
 	DatabasePath  string  `yaml:"database_path"`
-	BlackboxKey   string  `yaml:"blackbox_api_key"`
-	BlackboxURL   string  `yaml:"blackbox_base_url"`
+	LLMAPIKey     string  `yaml:"llm_api_key"`
+	LLMBaseURL    string  `yaml:"llm_base_url"`
 	Model         string  `yaml:"llm_model"`
 	Temperature   float64 `yaml:"llm_temperature"`
 }

@@ -1,10 +1,10 @@
 ## Pin Uploader – AI-enriched Pinterest RSS
 
-A small client/server toolchain to upload images, generate Pinterest-ready metadata with a Blackbox (Gemma-3-27b) LLM via `langchaingo`, and expose them through an RSS 2.0 feed. All client-server traffic is encrypted with a shared AES-256 key (no TLS required).
+A small client/server toolchain to upload images, generate Pinterest-ready metadata with an OpenAI-compatible (e.g., Gemma-3-27b) LLM via `langchaingo`, and expose them through an RSS 2.0 feed. All client-server traffic is encrypted with a shared AES-256 key (no TLS required).
 
 ### Prerequisites
 - Go 1.24.4+ (toolchain installed automatically via `go mod tidy`).
-- Blackbox API key and base URL (OpenAI-compatible).
+- LLM API key and base URL (OpenAI-compatible).
 - Base64-encoded 32-byte symmetric key shared between client and server.
 
 Generate a key:
@@ -21,16 +21,17 @@ port: 8080
 public_base_url: "http://localhost:8080"   # used for RSS links/enclosures
 encryption_key: "BASE64_32_BYTE_KEY"
 database_path: "./pins.db"
-blackbox_api_key: "YOUR_BLACKBOX_KEY"
-blackbox_base_url: "https://api.blackbox.ai/v1"
+llm_api_key: "YOUR_LLM_KEY"
+llm_base_url: "https://api.your-llm-provider.com/v1"
 llm_model: "gemma-3-27b"
 llm_temperature: 0.7
 ```
 
-`configs/client.yaml`
+`~/.config/pin-uploader/config.yaml` (created by `make configure`)
 ```yaml
 server_address: "http://localhost:8080"
 encryption_key: "BASE64_32_BYTE_KEY"       # must match server
+# Set your server's LLM API token in the server config.
 ```
 
 ### Running the server
@@ -40,8 +41,14 @@ go run ./cmd/server --config configs/server.yaml
 The server listens on `port`, handles `/upload`, `/rss`, and `/image/{id}` endpoints, and persists pins into SQLite.
 
 ### Uploading images from the client
+Prepare the client config (once):
 ```bash
-go run ./cmd/client --config configs/client.yaml images/*.png
+make configure
+```
+
+Upload images:
+```bash
+go run ./cmd/client --config ~/.config/pin-uploader/config.yaml images/*.png
 ```
 - Glob patterns are supported; unmatched patterns are treated as literal paths.
 - The client encrypts a JSON payload (filename + base64 image data) with AES-GCM and posts to `/upload`.
@@ -62,7 +69,7 @@ Each item includes title, description, categories (tags), and an enclosure point
 
 ### Notes on encryption & LLM
 - Encryption uses AES-256-GCM with a shared key (nonce prepended to ciphertext).
-- LLM calls go through `langchaingo`’s OpenAI client; configure `blackbox_base_url`/`blackbox_api_key` for your Blackbox endpoint. If the LLM call fails or returns invalid JSON, the server falls back to deterministic metadata and logs the issue.
+- LLM calls go through `langchaingo`’s OpenAI client; configure `llm_base_url`/`llm_api_key` for your provider. If the LLM call fails or returns invalid JSON, the server falls back to deterministic metadata and logs the issue.
 
 ### Manual testing checklist
 1) Start the server with your config.

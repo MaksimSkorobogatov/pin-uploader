@@ -27,7 +27,7 @@ type Metadata struct {
 	Tags        []string `json:"tags"`
 }
 
-// NewLLMClient constructs a client using OpenAI-compatible Blackbox endpoint.
+// NewLLMClient constructs a client using an OpenAI-compatible LLM endpoint.
 func NewLLMClient(apiKey, baseURL, model string, temperature float64, logger *zap.Logger) (*LLMClient, error) {
 	opts := []openai.Option{
 		openai.WithToken(apiKey),

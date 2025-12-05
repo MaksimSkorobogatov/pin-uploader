@@ -1,0 +1,22 @@
+# Binaries
+bin/
+
+# Output of the go coverage tool
+*.out
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.gocache/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Configuration
+config.yaml
+/configs/*.yaml
+!/configs/*.example.yaml
