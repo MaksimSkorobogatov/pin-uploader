@@ -1,10 +1,11 @@
 package server
 
 import (
+	"bytes"
 	"context"
 	"crypto/sha256"
 	"database/sql"
-	"encoding/base64"
+	"encoding/gob"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -21,6 +22,7 @@ import (
 	"go.uber.org/zap"
 
 	appcrypto "github.com/MaksimSkorobogatov/pin-uploader/internal/crypto"
+	"github.com/MaksimSkorobogatov/pin-uploader/internal/transport"
 )
 
 // Server aggregates HTTP handlers and dependencies.
@@ -33,13 +35,6 @@ type Server struct {
 	defaultPinLink string
 	httpSrv        *http.Server
 	shutdown       chan struct{}
-}
-
-// UploadPayload is the decrypted request payload.
-type UploadPayload struct {
-	Filename   string  `json:"filename"`
-	DataBase64 string  `json:"data"`
-	PinLink    *string `json:"pin_link"`
 }
 
 // UploadResponse contains metadata echoed back to the client.
@@ -109,17 +104,13 @@ func (s *Server) handleUpload(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var payload UploadPayload
-	if err := json.Unmarshal(plaintext, &payload); err != nil {
+	var payload transport.UploadPayload
+	if err := gob.NewDecoder(bytes.NewReader(plaintext)).Decode(&payload); err != nil {
 		s.writeError(w, http.StatusBadRequest, fmt.Errorf("decode payload: %w", err))
 		return
 	}
 
-	data, err := base64.StdEncoding.DecodeString(payload.DataBase64)
-	if err != nil {
-		s.writeError(w, http.StatusBadRequest, fmt.Errorf("decode data: %w", err))
-		return
-	}
+	data := payload.Data
 
 	hash := computeHash(data)
 	seen, err := s.storage.ExistsHash(r.Context(), hash)

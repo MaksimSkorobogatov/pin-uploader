@@ -3,7 +3,7 @@ package client
 import (
 	"bytes"
 	"context"
-	"encoding/base64"
+	"encoding/gob"
 	"encoding/json"
 	"fmt"
 	"image"
@@ -23,6 +23,7 @@ import (
 	"golang.org/x/image/draw"
 
 	appcrypto "github.com/MaksimSkorobogatov/pin-uploader/internal/crypto"
+	"github.com/MaksimSkorobogatov/pin-uploader/internal/transport"
 )
 
 // UploadResult represents a single upload outcome.
@@ -39,13 +40,6 @@ type UploadResponse struct {
 	Title       string   `json:"title"`
 	Description string   `json:"description"`
 	Tags        []string `json:"tags"`
-}
-
-// UploadPayload is encrypted and sent to server.
-type UploadPayload struct {
-	Filename   string  `json:"filename"`
-	DataBase64 string  `json:"data"`
-	PinLink    *string `json:"pin_link"`
 }
 
 const (
@@ -116,18 +110,18 @@ func (u *Uploader) UploadFile(ctx context.Context, path string, pinLink *string)
 			zap.Int("longest_after", resized.After))
 	}
 
-	payload := UploadPayload{
-		Filename:   filepath.Base(path),
-		DataBase64: base64.StdEncoding.EncodeToString(data),
-		PinLink:    pinLink,
+	payload := transport.UploadPayload{
+		Filename: filepath.Base(path),
+		Data:     data,
+		PinLink:  pinLink,
 	}
 
-	raw, err := json.Marshal(payload)
-	if err != nil {
+	var buf bytes.Buffer
+	if err := gob.NewEncoder(&buf).Encode(payload); err != nil {
 		return UploadResult{Path: path, Error: fmt.Errorf("encode payload: %w", err)}
 	}
 
-	cipher, err := appcrypto.Encrypt(u.key, raw)
+	cipher, err := appcrypto.Encrypt(u.key, buf.Bytes())
 	if err != nil {
 		return UploadResult{Path: path, Error: fmt.Errorf("encrypt: %w", err)}
 	}
