@@ -26,8 +26,9 @@ var llmPrompt string
 
 // Metadata describes generated AI metadata.
 type Metadata struct {
-	Title       string `json:"title"`
-	Description string `json:"description"`
+	Title       string   `json:"title"`
+	Description string   `json:"description"`
+	Tags        []string `json:"tags"`
 }
 
 // NewLLMClient constructs a client using an OpenAI-compatible LLM endpoint.
@@ -86,5 +87,6 @@ func (c *LLMClient) fallback(filename string) Metadata {
 	return Metadata{
 		Title:       title,
 		Description: desc,
+		Tags:        []string{"#placeholder", "#ai", "#pin"},
 	}
 }

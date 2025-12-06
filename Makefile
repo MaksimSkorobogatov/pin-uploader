@@ -8,6 +8,10 @@ help: ## Show the help prompt.
 build: ## Build all binaries
 	go build -o bin/ ./...
 
+.PHONY: fmt
+fmt: ## Run gofmt on project sources
+	gofmt -w .
+
 .PHONY: configure
 configure: ## Create default client config (~/.config/pin-uploader/config.yaml); set the correct LLM API token on the server
 	@mkdir -p $(dir $(CLIENT_CONFIG))

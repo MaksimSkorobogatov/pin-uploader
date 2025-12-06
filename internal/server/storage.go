@@ -4,6 +4,9 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"os"
+	"path/filepath"
+	"strings"
 	"time"
 
 	"go.uber.org/zap"
@@ -18,7 +21,6 @@ type Pin struct {
 	UploadedAt  time.Time
 	Title       string
 	Description string
-	Tags        string
 	GUID        string
 	PubDate     time.Time
 	MimeType    string
@@ -33,7 +35,12 @@ type Storage struct {
 
 // NewStorage initializes storage and ensures schema.
 func NewStorage(dbPath string, logger *zap.Logger) (*Storage, error) {
-	db, err := sql.Open("sqlite", dbPath)
+	finalPath, err := prepareDBPath(dbPath)
+	if err != nil {
+		return nil, err
+	}
+
+	db, err := sql.Open("sqlite", finalPath)
 	if err != nil {
 		return nil, fmt.Errorf("open sqlite: %w", err)
 	}
@@ -54,7 +61,6 @@ CREATE TABLE IF NOT EXISTS pins (
 	uploaded_at DATETIME NOT NULL,
 	title TEXT,
 	description TEXT,
-	tags TEXT,
 	guid TEXT NOT NULL UNIQUE,
 	pub_date DATETIME NOT NULL,
 	mime_type TEXT,
@@ -71,9 +77,9 @@ CREATE INDEX IF NOT EXISTS idx_pub_date ON pins(pub_date DESC);
 // InsertPin stores a pin and returns its ID.
 func (s *Storage) InsertPin(ctx context.Context, p Pin) (int64, error) {
 	res, err := s.db.ExecContext(ctx, `
-INSERT INTO pins (filename, uploaded_at, title, description, tags, guid, pub_date, mime_type, data)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-		p.Filename, p.UploadedAt.UTC(), p.Title, p.Description, p.Tags, p.GUID, p.PubDate.UTC(), p.MimeType, p.Data)
+INSERT INTO pins (filename, uploaded_at, title, description, guid, pub_date, mime_type, data)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+		p.Filename, p.UploadedAt.UTC(), p.Title, p.Description, p.GUID, p.PubDate.UTC(), p.MimeType, p.Data)
 	if err != nil {
 		return 0, fmt.Errorf("insert pin: %w", err)
 	}
@@ -88,7 +94,7 @@ VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 // ListPins returns pins ordered by pubDate descending, limited by provided count.
 func (s *Storage) ListPins(ctx context.Context, limit int) ([]Pin, error) {
 	rows, err := s.db.QueryContext(ctx, `
-SELECT id, filename, uploaded_at, title, description, tags, guid, pub_date, mime_type, data
+SELECT id, filename, uploaded_at, title, description, guid, pub_date, mime_type, data
 FROM pins
 ORDER BY pub_date DESC
 LIMIT ?`, limit)
@@ -100,7 +106,7 @@ LIMIT ?`, limit)
 	var pins []Pin
 	for rows.Next() {
 		var p Pin
-		if err := rows.Scan(&p.ID, &p.Filename, &p.UploadedAt, &p.Title, &p.Description, &p.Tags, &p.GUID, &p.PubDate, &p.MimeType, &p.Data); err != nil {
+		if err := rows.Scan(&p.ID, &p.Filename, &p.UploadedAt, &p.Title, &p.Description, &p.GUID, &p.PubDate, &p.MimeType, &p.Data); err != nil {
 			return nil, fmt.Errorf("scan pin: %w", err)
 		}
 		pins = append(pins, p)
@@ -126,4 +132,20 @@ func (s *Storage) GetPinData(ctx context.Context, id int64) (string, []byte, err
 // Close releases the underlying DB connection.
 func (s *Storage) Close() error {
 	return s.db.Close()
+}
+
+func prepareDBPath(p string) (string, error) {
+	if strings.HasPrefix(p, "~") {
+		home, err := os.UserHomeDir()
+		if err != nil {
+			return "", fmt.Errorf("resolve home dir: %w", err)
+		}
+		p = filepath.Join(home, strings.TrimPrefix(p, "~"))
+	}
+
+	dir := filepath.Dir(p)
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		return "", fmt.Errorf("create db dir: %w", err)
+	}
+	return p, nil
 }

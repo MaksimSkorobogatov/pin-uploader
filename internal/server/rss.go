@@ -31,13 +31,7 @@ type RSSItem struct {
 	Link        string     `xml:"link"`
 	GUID        string     `xml:"guid"`
 	PubDate     string     `xml:"pubDate"`
-	Categories  []Category `xml:"category,omitempty"`
 	Enclosure   *Enclosure `xml:"enclosure"`
-}
-
-// Category maps RSS category.
-type Category struct {
-	Term string `xml:",chardata"`
 }
 
 // Enclosure represents the image attachment.
@@ -51,13 +45,6 @@ type Enclosure struct {
 func BuildRSS(pins []Pin, baseURL string) (string, error) {
 	items := make([]RSSItem, 0, len(pins))
 	for _, p := range pins {
-		cats := []Category{}
-		if p.Tags != "" {
-			for _, t := range splitTags(p.Tags) {
-				cats = append(cats, Category{Term: t})
-			}
-		}
-
 		itemLink := fmt.Sprintf("%s/image/%d", trimTrailingSlash(baseURL), p.ID)
 		items = append(items, RSSItem{
 			Title:       p.Title,
@@ -65,7 +52,6 @@ func BuildRSS(pins []Pin, baseURL string) (string, error) {
 			Link:        itemLink,
 			GUID:        p.GUID,
 			PubDate:     p.PubDate.UTC().Format(time.RFC1123Z),
-			Categories:  cats,
 			Enclosure: &Enclosure{
 				URL:    itemLink,
 				Length: len(p.Data),
@@ -101,29 +87,4 @@ func trimTrailingSlash(in string) string {
 		return in[:len(in)-1]
 	}
 	return in
-}
-
-func splitTags(tags string) []string {
-	var out []string
-	start := 0
-	for i := 0; i <= len(tags); i++ {
-		if i == len(tags) || tags[i] == ',' {
-			if i > start {
-				segment := tags[start:i]
-				out = append(out, trimSpace(segment))
-			}
-			start = i + 1
-		}
-	}
-	return out
-}
-
-func trimSpace(s string) string {
-	for len(s) > 0 && (s[0] == ' ' || s[0] == '\t' || s[0] == '\n') {
-		s = s[1:]
-	}
-	for len(s) > 0 && (s[len(s)-1] == ' ' || s[len(s)-1] == '\t' || s[len(s)-1] == '\n') {
-		s = s[:len(s)-1]
-	}
-	return s
 }
