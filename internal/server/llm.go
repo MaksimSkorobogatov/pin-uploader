@@ -72,6 +72,8 @@ func NewLLMClient(apiKey, baseURL, model string, temperature float64, promptPara
 		logger.Fatal("build prompt failed", zap.Error(err))
 	}
 
+	logger.Info("using prompt", zap.String("prompt", prompt))
+
 	return &LLMClient{
 		llm:         llm,
 		model:       model,
@@ -144,13 +146,22 @@ func (c *LLMClient) GenerateMetadata(ctx context.Context, mimeType string, fileD
 		return c.fallback(), errors.New("empty llm response")
 	}
 
-	var meta Metadata
-	if err := json.Unmarshal([]byte(resp.Choices[0].Content), &meta); err != nil {
+	res, err := unmarshalResponse(resp.Choices[0].Content)
+	if err != nil {
 		c.logger.Warn("failed to parse llm json, using fallback", zap.Error(err), zap.Any("resp", resp))
 		return c.fallback(), err
 	}
 
-	return meta, nil
+	return res, nil
+}
+
+func unmarshalResponse(data string) (Metadata, error) {
+	data = strings.TrimSpace(data)
+	data = strings.TrimPrefix(data, "```json")
+	data = strings.TrimSuffix(data, "```")
+	var res Metadata
+	err := json.Unmarshal([]byte(data), &res)
+	return res, err
 }
 
 func (c *LLMClient) fallback() Metadata {
