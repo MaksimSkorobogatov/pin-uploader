@@ -1,7 +1,7 @@
 port: 8080
 public_base_url: "http://localhost:8080"
 encryption_key: "REPLACE_WITH_BASE64_KEY"
-database_path: "./pins.db"
+database_path: "~/.local/share/pin-uploader/db.sqlite"
 llm_api_key: "REPLACE_WITH_LLM_KEY"
 llm_base_url: "https://api.your-llm-provider.com/v1"
 llm_model: "gemma-3-27b"

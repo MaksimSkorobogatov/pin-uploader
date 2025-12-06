@@ -18,7 +18,7 @@ import (
 )
 
 func main() {
-	configPath := flag.String("config", "configs/server.yaml", "path to server config")
+	configPath := flag.String("config", "/etc/pin-uploader.yaml", "path to server config")
 	flag.Parse()
 
 	logger, _ := zap.NewProduction()

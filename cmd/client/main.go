@@ -58,7 +58,7 @@ func main() {
 func defaultClientConfigPath() string {
 	home, err := os.UserHomeDir()
 	if err != nil {
-		return "configs/client.yaml"
+		return "config.yaml"
 	}
 	return filepath.Join(home, ".config", "pin-uploader", "config.yaml")
 }
