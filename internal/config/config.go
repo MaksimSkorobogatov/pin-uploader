@@ -10,14 +10,29 @@ import (
 
 // ServerConfig represents configuration for the server component.
 type ServerConfig struct {
-	Port          int     `yaml:"port"`
-	EncryptionKey string  `yaml:"encryption_key"`
-	PublicBaseURL string  `yaml:"public_base_url"`
-	DatabasePath  string  `yaml:"database_path"`
-	LLMAPIKey     string  `yaml:"llm_api_key"`
-	LLMBaseURL    string  `yaml:"llm_base_url"`
-	Model         string  `yaml:"llm_model"`
-	Temperature   float64 `yaml:"llm_temperature"`
+	Port          int          `yaml:"port"`
+	EncryptionKey string       `yaml:"encryption_key"`
+	PublicBaseURL string       `yaml:"public_base_url"`
+	DatabasePath  string       `yaml:"database_path"`
+	LLMAPIKey     string       `yaml:"llm_api_key"`
+	LLMBaseURL    string       `yaml:"llm_base_url"`
+	Model         string       `yaml:"llm_model"`
+	Temperature   float64      `yaml:"llm_temperature"`
+	PromptParams  PromptParams `yaml:"prompt_params"`
+}
+
+type PromptParams struct {
+	PinDescriptionLanguage string `yaml:"pin_description_language"`
+}
+
+func DefaultServerConfig() ServerConfig {
+	return ServerConfig{
+		Port:         8080,
+		DatabasePath: "~/.local/share/pin-uploader/db.sqlite",
+		PromptParams: PromptParams{
+			PinDescriptionLanguage: "English",
+		},
+	}
 }
 
 // ClientConfig represents configuration for the CLI uploader.
@@ -33,7 +48,7 @@ func LoadServerConfig(path string) (*ServerConfig, error) {
 		return nil, fmt.Errorf("read server config: %w", err)
 	}
 
-	var cfg ServerConfig
+	cfg := DefaultServerConfig()
 	if err := yaml.Unmarshal(data, &cfg); err != nil {
 		return nil, fmt.Errorf("parse server config: %w", err)
 	}

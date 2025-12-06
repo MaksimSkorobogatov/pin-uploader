@@ -46,7 +46,7 @@ func main() {
 	}
 	defer storage.Close()
 
-	llm, err := server.NewLLMClient(cfg.LLMAPIKey, cfg.LLMBaseURL, cfg.Model, cfg.Temperature, logger)
+	llm, err := server.NewLLMClient(cfg.LLMAPIKey, cfg.LLMBaseURL, cfg.Model, cfg.Temperature, cfg.PromptParams, logger)
 	if err != nil {
 		logger.Fatal("init llm", zap.Error(err))
 	}

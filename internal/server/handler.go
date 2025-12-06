@@ -152,7 +152,6 @@ func (s *Server) handleUpload(w http.ResponseWriter, r *http.Request) {
 		GUID:        guid,
 		Title:       meta.Title,
 		Description: meta.Description,
-		Tags:        meta.Tags,
 	}
 
 	s.writeJSON(w, http.StatusOK, resp)
