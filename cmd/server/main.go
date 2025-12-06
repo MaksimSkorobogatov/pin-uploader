@@ -50,7 +50,7 @@ func main() {
 		logger.Fatal("init llm", zap.Error(err))
 	}
 
-	srv := server.NewServer(addr, baseURL, key, storage, llm, logger)
+	srv := server.NewServer(addr, baseURL, cfg.DefaultPinLink, key, storage, llm, logger)
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()

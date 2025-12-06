@@ -9,3 +9,5 @@ llm_temperature: 0.6
 prompt_params:
   pin_description_language: "Russian"
 llm_timeout: 2m
+# default pin link can contain, for example, a link to your telegram channel
+default_pin_link:

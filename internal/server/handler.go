@@ -25,19 +25,21 @@ import (
 
 // Server aggregates HTTP handlers and dependencies.
 type Server struct {
-	logger   *zap.Logger
-	storage  *Storage
-	llm      *LLMClient
-	key      []byte
-	baseURL  string
-	httpSrv  *http.Server
-	shutdown chan struct{}
+	logger         *zap.Logger
+	storage        *Storage
+	llm            *LLMClient
+	key            []byte
+	baseURL        string
+	defaultPinLink string
+	httpSrv        *http.Server
+	shutdown       chan struct{}
 }
 
 // UploadPayload is the decrypted request payload.
 type UploadPayload struct {
-	Filename   string `json:"filename"`
-	DataBase64 string `json:"data"`
+	Filename   string  `json:"filename"`
+	DataBase64 string  `json:"data"`
+	PinLink    *string `json:"pin_link"`
 }
 
 // UploadResponse contains metadata echoed back to the client.
@@ -50,15 +52,16 @@ type UploadResponse struct {
 }
 
 // NewServer constructs the HTTP server.
-func NewServer(addr, baseURL string, key []byte, storage *Storage, llm *LLMClient, logger *zap.Logger) *Server {
+func NewServer(addr, baseURL, defaultPinLink string, key []byte, storage *Storage, llm *LLMClient, logger *zap.Logger) *Server {
 	mux := http.NewServeMux()
 	s := &Server{
-		logger:   logger,
-		storage:  storage,
-		llm:      llm,
-		key:      key,
-		baseURL:  baseURL,
-		shutdown: make(chan struct{}),
+		logger:         logger,
+		storage:        storage,
+		llm:            llm,
+		key:            key,
+		baseURL:        baseURL,
+		defaultPinLink: defaultPinLink,
+		shutdown:       make(chan struct{}),
 	}
 
 	mux.HandleFunc("/rss", s.handleRSS)
@@ -160,6 +163,7 @@ func (s *Server) handleUpload(w http.ResponseWriter, r *http.Request) {
 		MimeType:    mimeType,
 		Data:        data,
 		Hash:        hash,
+		Link:        payload.PinLink,
 	}
 
 	id, err := s.storage.InsertPin(r.Context(), pin)
@@ -190,7 +194,7 @@ func (s *Server) handleRSS(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	feed, err := BuildRSS(pins, s.baseURL)
+	feed, err := BuildRSS(pins, s.baseURL, s.defaultPinLink)
 	if err != nil {
 		s.writeError(w, http.StatusInternalServerError, fmt.Errorf("build rss: %w", err))
 		return

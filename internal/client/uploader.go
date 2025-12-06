@@ -43,8 +43,9 @@ type UploadResponse struct {
 
 // UploadPayload is encrypted and sent to server.
 type UploadPayload struct {
-	Filename   string `json:"filename"`
-	DataBase64 string `json:"data"`
+	Filename   string  `json:"filename"`
+	DataBase64 string  `json:"data"`
+	PinLink    *string `json:"pin_link"`
 }
 
 const (
@@ -97,7 +98,7 @@ func ExpandGlobs(patterns []string) ([]string, error) {
 }
 
 // UploadFile uploads a single file.
-func (u *Uploader) UploadFile(ctx context.Context, path string) UploadResult {
+func (u *Uploader) UploadFile(ctx context.Context, path string, pinLink *string) UploadResult {
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return UploadResult{Path: path, Error: fmt.Errorf("read file: %w", err)}
@@ -118,6 +119,7 @@ func (u *Uploader) UploadFile(ctx context.Context, path string) UploadResult {
 	payload := UploadPayload{
 		Filename:   filepath.Base(path),
 		DataBase64: base64.StdEncoding.EncodeToString(data),
+		PinLink:    pinLink,
 	}
 
 	raw, err := json.Marshal(payload)

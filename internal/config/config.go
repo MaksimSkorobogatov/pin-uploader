@@ -11,16 +11,17 @@ import (
 
 // ServerConfig represents configuration for the server component.
 type ServerConfig struct {
-	ListenAddress string        `yaml:"listen_address"`
-	EncryptionKey string        `yaml:"encryption_key"`
-	PublicBaseURL string        `yaml:"public_base_url"`
-	DatabasePath  string        `yaml:"database_path"`
-	LLMAPIKey     string        `yaml:"llm_api_key"`
-	LLMBaseURL    string        `yaml:"llm_base_url"`
-	Model         string        `yaml:"llm_model"`
-	Temperature   float64       `yaml:"llm_temperature"`
-	LLMTimeout    time.Duration `yaml:"llm_timeout"`
-	PromptParams  PromptParams  `yaml:"prompt_params"`
+	ListenAddress  string        `yaml:"listen_address"`
+	EncryptionKey  string        `yaml:"encryption_key"`
+	PublicBaseURL  string        `yaml:"public_base_url"`
+	DatabasePath   string        `yaml:"database_path"`
+	LLMAPIKey      string        `yaml:"llm_api_key"`
+	LLMBaseURL     string        `yaml:"llm_base_url"`
+	Model          string        `yaml:"llm_model"`
+	Temperature    float64       `yaml:"llm_temperature"`
+	LLMTimeout     time.Duration `yaml:"llm_timeout"`
+	PromptParams   PromptParams  `yaml:"prompt_params"`
+	DefaultPinLink string        `yaml:"default_pin_link"`
 }
 
 type PromptParams struct {

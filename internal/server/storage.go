@@ -26,6 +26,7 @@ type Pin struct {
 	MimeType    string
 	Data        []byte
 	Hash        string
+	Link        *string
 }
 
 // Storage wraps SQLite persistence.
@@ -66,7 +67,8 @@ CREATE TABLE IF NOT EXISTS pins (
 	pub_date DATETIME NOT NULL,
 	mime_type TEXT,
 	data BLOB NOT NULL,
-	hash TEXT NOT NULL
+	hash TEXT NOT NULL,
+	link TEXT
 );
 CREATE INDEX IF NOT EXISTS idx_pub_date ON pins(pub_date DESC);
 CREATE UNIQUE INDEX IF NOT EXISTS idx_hash ON pins(hash);
@@ -80,10 +82,15 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_hash ON pins(hash);
 
 // InsertPin stores a pin and returns its ID.
 func (s *Storage) InsertPin(ctx context.Context, p Pin) (int64, error) {
+	link := sql.NullString{}
+	if p.Link != nil {
+		link.String = *p.Link
+		link.Valid = true
+	}
 	res, err := s.db.ExecContext(ctx, `
-INSERT INTO pins (filename, uploaded_at, title, description, guid, pub_date, mime_type, data, hash)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-		p.Filename, p.UploadedAt.UTC(), p.Title, p.Description, p.GUID, p.PubDate.UTC(), p.MimeType, p.Data, p.Hash)
+INSERT INTO pins (filename, uploaded_at, title, description, guid, pub_date, mime_type, data, hash, link)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		p.Filename, p.UploadedAt.UTC(), p.Title, p.Description, p.GUID, p.PubDate.UTC(), p.MimeType, p.Data, p.Hash, link)
 	if err != nil {
 		return 0, fmt.Errorf("insert pin: %w", err)
 	}
@@ -98,7 +105,7 @@ VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 // ListPins returns pins ordered by pubDate descending, limited by provided count.
 func (s *Storage) ListPins(ctx context.Context, limit int) ([]Pin, error) {
 	rows, err := s.db.QueryContext(ctx, `
-SELECT id, filename, uploaded_at, title, description, guid, pub_date, mime_type, data, hash
+SELECT id, filename, uploaded_at, title, description, guid, pub_date, mime_type, data, hash, link
 FROM pins
 ORDER BY pub_date DESC
 LIMIT ?`, limit)
@@ -109,9 +116,15 @@ LIMIT ?`, limit)
 
 	var pins []Pin
 	for rows.Next() {
-		var p Pin
-		if err := rows.Scan(&p.ID, &p.Filename, &p.UploadedAt, &p.Title, &p.Description, &p.GUID, &p.PubDate, &p.MimeType, &p.Data, &p.Hash); err != nil {
+		var (
+			p    Pin
+			link sql.NullString
+		)
+		if err := rows.Scan(&p.ID, &p.Filename, &p.UploadedAt, &p.Title, &p.Description, &p.GUID, &p.PubDate, &p.MimeType, &p.Data, &p.Hash, &link); err != nil {
 			return nil, fmt.Errorf("scan pin: %w", err)
+		}
+		if link.Valid {
+			p.Link = &link.String
 		}
 		pins = append(pins, p)
 	}

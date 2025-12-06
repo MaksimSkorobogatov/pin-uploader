@@ -63,15 +63,26 @@ func (c CDATA) MarshalXML(e *xml.Encoder, start xml.StartElement) error {
 }
 
 // BuildRSS constructs an RSS 2.0 feed from pins.
-func BuildRSS(pins []Pin, baseURL string) (string, error) {
+func BuildRSS(pins []Pin, baseURL string, defaultPinLink string) (string, error) {
 	items := make([]RSSItem, 0, len(pins))
 	base := trimTrailingSlash(baseURL)
 	for _, p := range pins {
 		imageURL := fmt.Sprintf("%s/rss/image/%d", base, p.ID)
+
+		var link string
+		switch {
+		case p.Link != nil:
+			link = *p.Link
+		case defaultPinLink != "":
+			link = defaultPinLink
+		default:
+			link = imageURL
+		}
+
 		items = append(items, RSSItem{
 			Title:       p.Title,
 			Description: CDATA(p.Description),
-			Link:        imageURL,
+			Link:        link,
 			GUID:        p.GUID,
 			PubDate:     p.PubDate.UTC().Format(time.RFC1123Z),
 			Media: MediaContent{

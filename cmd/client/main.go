@@ -17,6 +17,7 @@ import (
 func main() {
 	defaultConfig := defaultClientConfigPath()
 	configPath := flag.String("config", defaultConfig, "path to client config")
+	pinLink := flag.String("link", "", "the link where the pin will lead to")
 	flag.Parse()
 
 	logger, _ := zap.NewProduction()
@@ -46,7 +47,7 @@ func main() {
 	defer cancel()
 
 	for _, p := range paths {
-		res := uploader.UploadFile(ctx, p)
+		res := uploader.UploadFile(ctx, p, pinLink)
 		if res.Error != nil {
 			fmt.Printf("❌ %s: %v\n", p, res.Error)
 			continue
