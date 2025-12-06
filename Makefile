@@ -6,7 +6,7 @@ help: ## Show the help prompt.
 
 .PHONY: build
 build: ## Build all binaries
-	go build ./...
+	go build -o bin/ ./...
 
 .PHONY: configure
 configure: ## Create default client config (~/.config/pin-uploader/config.yaml); set the correct LLM API token on the server
