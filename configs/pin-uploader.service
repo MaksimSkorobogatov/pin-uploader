@@ -1,0 +1,16 @@
+[Unit]
+Description=Pin Uploader
+After=network.target
+
+[Service]
+Type=simple
+User=pin-uploader
+Group=pin-uploader
+WorkingDirectory=/opt/pin-uploader
+ExecStart=/usr/local/bin/pin-uploader -config /etc/pin-uploader.yaml
+Restart=on-failure
+ProtectSystem=full
+NoNewPrivileges=yes
+
+[Install]
+WantedBy=multi-user.target

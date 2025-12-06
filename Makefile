@@ -20,3 +20,6 @@ configure: ## Create default client config (~/.config/pin-uploader/config.yaml);
 		'encryption_key: "BASE64_32_BYTE_KEY"' \
 		"# Ensure your server is configured with the correct LLM API token." > $(CLIENT_CONFIG)
 	@echo "Wrote $(CLIENT_CONFIG). Update encryption_key/server_address and ensure the server LLM API token is set."
+
+install: build ## Build and install the server to linux system
+	sh install.sh
