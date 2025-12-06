@@ -45,7 +45,7 @@ type Enclosure struct {
 func BuildRSS(pins []Pin, baseURL string) (string, error) {
 	items := make([]RSSItem, 0, len(pins))
 	for _, p := range pins {
-		itemLink := fmt.Sprintf("%s/image/%d", trimTrailingSlash(baseURL), p.ID)
+		itemLink := fmt.Sprintf("%s/rss/image/%d", trimTrailingSlash(baseURL), p.ID)
 		items = append(items, RSSItem{
 			Title:       p.Title,
 			Description: p.Description,

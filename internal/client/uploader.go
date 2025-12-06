@@ -130,7 +130,7 @@ func (u *Uploader) UploadFile(ctx context.Context, path string) UploadResult {
 		return UploadResult{Path: path, Error: fmt.Errorf("encrypt: %w", err)}
 	}
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, u.serverURL+"/upload", bytes.NewReader(cipher))
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, u.serverURL+"/rss/upload", bytes.NewReader(cipher))
 	if err != nil {
 		return UploadResult{Path: path, Error: fmt.Errorf("build request: %w", err)}
 	}

@@ -5,7 +5,7 @@ CLI + server that encrypts image uploads, generates Pinterest-ready titles/descr
 ## What it does
 - Client AES-256-GCM encrypts `{filename, base64 image}` payloads and POSTs them to `/upload` (no TLS required while keys stay private).
 - Server decrypts, saves images to SQLite, and asks the LLM to build a JSON `{title, description}` using `internal/server/prompt_template.md` (4 KB preview to the model to keep prompts small). A deterministic fallback is used if the LLM fails.
-- RSS 2.0 feed is exposed at `/rss`; images are downloadable at `/image/{id}` and linked via enclosures.
+- RSS 2.0 feed is exposed at `/rss`; images are downloadable at `/rss/image/{id}` and linked via enclosures.
 - Prompt language is configurable (`pin_description_language`), while tags are appended in English as part of the description.
 
 ## Prerequisites
@@ -45,7 +45,7 @@ encryption_key: "BASE64_32_BYTE_KEY"       # must match the server key
 ```bash
 go run ./cmd/server --config configs/server.yaml
 ```
-- Endpoints: `POST /upload`, `GET /rss`, `GET /image/{id}`.
+- Endpoints: `POST /rss/upload`, `GET /rss`, `GET /rss/image/{id}`.
 - SQLite schema is created automatically at `database_path` (supports `~` expansion).
 
 ## Upload from the client

@@ -61,16 +61,16 @@ func NewServer(addr, baseURL string, key []byte, storage *Storage, llm *LLMClien
 		shutdown: make(chan struct{}),
 	}
 
-	mux.HandleFunc("/upload", s.handleUpload)
 	mux.HandleFunc("/rss", s.handleRSS)
-	mux.HandleFunc("/image/", s.handleImage)
+	mux.HandleFunc("/rss/image/", s.handleImage)
+	mux.HandleFunc("/rss/upload", s.handleUpload)
 
 	s.httpSrv = &http.Server{
 		Addr:         addr,
 		Handler:      mux,
 		ReadTimeout:  15 * time.Second,
 		WriteTimeout: 30 * time.Second,
-		IdleTimeout:  60 * time.Second,
+		IdleTimeout:  90 * time.Second,
 	}
 	return s
 }
@@ -93,7 +93,7 @@ func (s *Server) handleUpload(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	body, err := io.ReadAll(io.LimitReader(r.Body, 50<<20)) // 50MB cap
+	body, err := io.ReadAll(io.LimitReader(r.Body, 5<<20)) // 5MB cap
 	if err != nil {
 		s.writeError(w, http.StatusBadRequest, fmt.Errorf("read body: %w", err))
 		return
@@ -207,14 +207,14 @@ func (s *Server) handleImage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	idStr := strings.TrimPrefix(r.URL.Path, "/image/")
+	idStr := strings.TrimPrefix(r.URL.Path, "/rss/image/")
 	id, err := strconv.ParseInt(idStr, 10, 64)
 	if err != nil {
 		s.writeError(w, http.StatusBadRequest, fmt.Errorf("invalid id: %w", err))
 		return
 	}
 
-	mime, data, err := s.storage.GetPinData(r.Context(), id)
+	mimeType, data, err := s.storage.GetPinData(r.Context(), id)
 	if err != nil {
 		if errors.Is(err, io.EOF) || errors.Is(err, sql.ErrNoRows) || strings.Contains(strings.ToLower(err.Error()), "no rows") {
 			http.NotFound(w, r)
@@ -224,7 +224,7 @@ func (s *Server) handleImage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Header().Set("Content-Type", mime)
+	w.Header().Set("Content-Type", mimeType)
 	w.WriteHeader(http.StatusOK)
 	_, _ = w.Write(data)
 }
