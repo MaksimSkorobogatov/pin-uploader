@@ -43,8 +43,6 @@ func TestResizeImageIfNeeded_OrientationAndScale(t *testing.T) {
 				t.Fatalf("expected resized longest side <= %d, got %d", targetLongestPx, res.After)
 			}
 
-			os.WriteFile(tc.name+"_.jpeg", res.Data, 0644)
-
 			img, format, err := image.Decode(bytes.NewReader(res.Data))
 			if err != nil {
 				t.Fatalf("decode resized image: %v", err)
