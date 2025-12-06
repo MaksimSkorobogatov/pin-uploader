@@ -26,6 +26,7 @@ type ServerConfig struct {
 
 type PromptParams struct {
 	PinDescriptionLanguage string `yaml:"pin_description_language"`
+	PinTitleLanguage       string `yaml:"pin_title_language"`
 }
 
 func DefaultServerConfig() ServerConfig {
@@ -33,6 +34,7 @@ func DefaultServerConfig() ServerConfig {
 		ListenAddress: "localhost:8080",
 		DatabasePath:  "~/.local/share/pin-uploader/db.sqlite",
 		PromptParams: PromptParams{
+			PinTitleLanguage:       "English",
 			PinDescriptionLanguage: "English",
 		},
 	}

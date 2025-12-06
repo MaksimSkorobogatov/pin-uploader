@@ -6,7 +6,7 @@ CLI + server that encrypts image uploads, generates Pinterest-ready titles/descr
 - Client AES-256-GCM encrypts `{filename, base64 image}` payloads and POSTs them to `/upload` (no TLS required while keys stay private).
 - Server decrypts, saves images to SQLite, and asks the LLM to build a JSON `{title, description}` using `internal/server/prompt_template.md` (4 KB preview to the model to keep prompts small). A deterministic fallback is used if the LLM fails.
 - RSS 2.0 feed is exposed at `/rss`; images are downloadable at `/rss/image/{id}` and linked via enclosures.
-- Prompt language is configurable (`pin_description_language`), while tags are appended in English as part of the description.
+- Prompt is configurable (`pin_description_language`), while tags are appended in English as part of the description.
 
 ## Prerequisites
 - Go 1.24.4+.
@@ -23,7 +23,7 @@ Config samples live in `configs/`.
 
 `configs/server.yaml`
 ```yaml
-port: 8080                      # HTTP listen port
+port: 8080                                 # HTTP listen address
 public_base_url: "http://localhost:8080"   # used for RSS links/enclosures
 encryption_key: "BASE64_32_BYTE_KEY"       # must be 32 bytes when base64-decoded
 database_path: "~/.local/share/pin-uploader/db.sqlite"
@@ -32,7 +32,10 @@ llm_base_url: "https://api.your-llm-provider.com/v1"
 llm_model: "gemma-3-27b"
 llm_temperature: 0.6
 prompt_params:
-  pin_description_language: "English"      # change to generate descriptions in another language
+  pin_description_language: "English" # change to generate descriptions in another language
+  pin_title_language: "English"       # change to generate title in another language
+# default pin link can contain, for example, a link to your telegram channel
+default_pin_link:
 ```
 
 `~/.config/pin-uploader/config.yaml` (created by `make configure`)
@@ -43,7 +46,7 @@ encryption_key: "BASE64_32_BYTE_KEY"       # must match the server key
 
 ## Run the server
 ```bash
-go run ./cmd/server --config configs/server.yaml
+go run ./cmd/server -config configs/server.yaml
 ```
 - Endpoints: `POST /rss/upload`, `GET /rss`, `GET /rss/image/{id}`.
 - SQLite schema is created automatically at `database_path` (supports `~` expansion).
@@ -56,12 +59,12 @@ make configure   # writes ~/.config/pin-uploader/config.yaml
 
 Upload one or many images (globs allowed; unmatched globs are used as literal paths):
 ```bash
-go run ./cmd/client --config ~/.config/pin-uploader/config.yaml images/*.png
+go run ./cmd/client -link https://www.instagram.com/p/CfJKeradf43fGeORA-N *.jpeg
 ```
 Example:
 ```
-✅ images/cat.png -> ID 1 | GUID f2e... | Title: Cozy Cat Corner
-❌ missing.jpg: open missing.jpg: no such file or directory
+✅ images/cat.jpeg -> ID 1 | GUID f2e... | Title: Cozy Cat Corner
+❌ missing.jpeg: open missing.jpeg: no such file or directory
 ```
 
 ## RSS feed for Pinterest
