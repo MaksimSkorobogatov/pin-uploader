@@ -135,7 +135,6 @@ func (s *Server) handleUpload(w http.ResponseWriter, r *http.Request) {
 		UploadedAt:  now,
 		Title:       meta.Title,
 		Description: meta.Description,
-		Tags:        strings.Join(meta.Tags, ","),
 		GUID:        guid,
 		PubDate:     now,
 		MimeType:    mime,
@@ -153,7 +152,6 @@ func (s *Server) handleUpload(w http.ResponseWriter, r *http.Request) {
 		GUID:        guid,
 		Title:       meta.Title,
 		Description: meta.Description,
-		Tags:        meta.Tags,
 	}
 
 	s.writeJSON(w, http.StatusOK, resp)

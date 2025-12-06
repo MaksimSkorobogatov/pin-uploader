@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	_ "embed"
 	"encoding/json"
 	"fmt"
 	"time"
@@ -20,11 +21,13 @@ type LLMClient struct {
 	timeout     time.Duration
 }
 
+//go:embed prompt.md
+var llmPrompt string
+
 // Metadata describes generated AI metadata.
 type Metadata struct {
-	Title       string   `json:"title"`
-	Description string   `json:"description"`
-	Tags        []string `json:"tags"`
+	Title       string `json:"title"`
+	Description string `json:"description"`
 }
 
 // NewLLMClient constructs a client using an OpenAI-compatible LLM endpoint.
@@ -60,12 +63,7 @@ func (c *LLMClient) GenerateMetadata(ctx context.Context, filename string, previ
 	ctx, cancel := context.WithTimeout(ctx, c.timeout)
 	defer cancel()
 
-	prompt := fmt.Sprintf(`You are an assistant that writes Pinterest pin metadata.
-Generate a short, catchy title, a 2-3 sentence description, and 3-6 tags.
-Use the file name and context to infer subject. Reply strictly in JSON with fields "title", "description", "tags".
-Filename: %s
-ImageBytesSize: %d
-`, filename, len(preview))
+	prompt := fmt.Sprintf(llmPrompt, filename)
 
 	resp, err := llms.GenerateFromSinglePrompt(ctx, c.llm, prompt, llms.WithTemperature(c.temperature))
 	if err != nil {
@@ -79,10 +77,6 @@ ImageBytesSize: %d
 		return c.fallback(filename), err
 	}
 
-	if len(meta.Tags) == 0 {
-		meta.Tags = []string{"pinterest", "ai-generated"}
-	}
-
 	return meta, nil
 }
 
@@ -92,6 +86,5 @@ func (c *LLMClient) fallback(filename string) Metadata {
 	return Metadata{
 		Title:       title,
 		Description: desc,
-		Tags:        []string{"placeholder", "ai", "pin"},
 	}
 }
