@@ -1,4 +1,4 @@
-port: 8080
+listen_address: "localhost:8080"
 public_base_url: "http://localhost:8080"
 encryption_key: "REPLACE_WITH_BASE64_KEY"
 database_path: "~/.local/share/pin-uploader/db.sqlite"

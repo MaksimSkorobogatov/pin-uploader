@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"flag"
-	"fmt"
 	"net/http"
 	"os"
 	"os/signal"
@@ -34,10 +33,10 @@ func main() {
 		logger.Fatal("decode encryption key", zap.Error(err))
 	}
 
-	addr := fmt.Sprintf(":%d", cfg.Port)
+	addr := cfg.ListenAddress
 	baseURL := cfg.PublicBaseURL
 	if baseURL == "" {
-		baseURL = "http://localhost" + addr
+		baseURL = "https://" + addr
 	}
 
 	storage, err := server.NewStorage(cfg.DatabasePath, logger)
@@ -46,7 +45,7 @@ func main() {
 	}
 	defer storage.Close()
 
-	llm, err := server.NewLLMClient(cfg.LLMAPIKey, cfg.LLMBaseURL, cfg.Model, cfg.Temperature, cfg.PromptParams, logger)
+	llm, err := server.NewLLMClient(cfg.LLMAPIKey, cfg.LLMBaseURL, cfg.Model, cfg.Temperature, cfg.PromptParams, cfg.LLMTimeout, logger)
 	if err != nil {
 		logger.Fatal("init llm", zap.Error(err))
 	}

@@ -4,21 +4,23 @@ import (
 	"encoding/base64"
 	"fmt"
 	"os"
+	"time"
 
 	"gopkg.in/yaml.v3"
 )
 
 // ServerConfig represents configuration for the server component.
 type ServerConfig struct {
-	Port          int          `yaml:"port"`
-	EncryptionKey string       `yaml:"encryption_key"`
-	PublicBaseURL string       `yaml:"public_base_url"`
-	DatabasePath  string       `yaml:"database_path"`
-	LLMAPIKey     string       `yaml:"llm_api_key"`
-	LLMBaseURL    string       `yaml:"llm_base_url"`
-	Model         string       `yaml:"llm_model"`
-	Temperature   float64      `yaml:"llm_temperature"`
-	PromptParams  PromptParams `yaml:"prompt_params"`
+	ListenAddress string        `yaml:"listen_address"`
+	EncryptionKey string        `yaml:"encryption_key"`
+	PublicBaseURL string        `yaml:"public_base_url"`
+	DatabasePath  string        `yaml:"database_path"`
+	LLMAPIKey     string        `yaml:"llm_api_key"`
+	LLMBaseURL    string        `yaml:"llm_base_url"`
+	Model         string        `yaml:"llm_model"`
+	Temperature   float64       `yaml:"llm_temperature"`
+	LLMTimeout    time.Duration `yaml:"llm_timeout"`
+	PromptParams  PromptParams  `yaml:"prompt_params"`
 }
 
 type PromptParams struct {
@@ -27,8 +29,8 @@ type PromptParams struct {
 
 func DefaultServerConfig() ServerConfig {
 	return ServerConfig{
-		Port:         8080,
-		DatabasePath: "~/.local/share/pin-uploader/db.sqlite",
+		ListenAddress: "localhost:8080",
+		DatabasePath:  "~/.local/share/pin-uploader/db.sqlite",
 		PromptParams: PromptParams{
 			PinDescriptionLanguage: "English",
 		},

@@ -25,6 +25,7 @@ type Pin struct {
 	PubDate     time.Time
 	MimeType    string
 	Data        []byte
+	Hash        string
 }
 
 // Storage wraps SQLite persistence.
@@ -64,22 +65,25 @@ CREATE TABLE IF NOT EXISTS pins (
 	guid TEXT NOT NULL UNIQUE,
 	pub_date DATETIME NOT NULL,
 	mime_type TEXT,
-	data BLOB NOT NULL
+	data BLOB NOT NULL,
+	hash TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_pub_date ON pins(pub_date DESC);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_hash ON pins(hash);
 `
 	if _, err := s.db.ExecContext(ctx, schema); err != nil {
 		return fmt.Errorf("apply schema: %w", err)
 	}
+
 	return nil
 }
 
 // InsertPin stores a pin and returns its ID.
 func (s *Storage) InsertPin(ctx context.Context, p Pin) (int64, error) {
 	res, err := s.db.ExecContext(ctx, `
-INSERT INTO pins (filename, uploaded_at, title, description, guid, pub_date, mime_type, data)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-		p.Filename, p.UploadedAt.UTC(), p.Title, p.Description, p.GUID, p.PubDate.UTC(), p.MimeType, p.Data)
+INSERT INTO pins (filename, uploaded_at, title, description, guid, pub_date, mime_type, data, hash)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		p.Filename, p.UploadedAt.UTC(), p.Title, p.Description, p.GUID, p.PubDate.UTC(), p.MimeType, p.Data, p.Hash)
 	if err != nil {
 		return 0, fmt.Errorf("insert pin: %w", err)
 	}
@@ -94,7 +98,7 @@ VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
 // ListPins returns pins ordered by pubDate descending, limited by provided count.
 func (s *Storage) ListPins(ctx context.Context, limit int) ([]Pin, error) {
 	rows, err := s.db.QueryContext(ctx, `
-SELECT id, filename, uploaded_at, title, description, guid, pub_date, mime_type, data
+SELECT id, filename, uploaded_at, title, description, guid, pub_date, mime_type, data, hash
 FROM pins
 ORDER BY pub_date DESC
 LIMIT ?`, limit)
@@ -106,7 +110,7 @@ LIMIT ?`, limit)
 	var pins []Pin
 	for rows.Next() {
 		var p Pin
-		if err := rows.Scan(&p.ID, &p.Filename, &p.UploadedAt, &p.Title, &p.Description, &p.GUID, &p.PubDate, &p.MimeType, &p.Data); err != nil {
+		if err := rows.Scan(&p.ID, &p.Filename, &p.UploadedAt, &p.Title, &p.Description, &p.GUID, &p.PubDate, &p.MimeType, &p.Data, &p.Hash); err != nil {
 			return nil, fmt.Errorf("scan pin: %w", err)
 		}
 		pins = append(pins, p)
@@ -127,6 +131,19 @@ func (s *Storage) GetPinData(ctx context.Context, id int64) (string, []byte, err
 		return "", nil, fmt.Errorf("scan image: %w", err)
 	}
 	return mime, data, nil
+}
+
+// ExistsHash checks if a pin with the given hash already exists.
+func (s *Storage) ExistsHash(ctx context.Context, hash string) (bool, error) {
+	var id int64
+	err := s.db.QueryRowContext(ctx, `SELECT id FROM pins WHERE hash = ? LIMIT 1`, hash).Scan(&id)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return false, nil
+		}
+		return false, fmt.Errorf("lookup hash: %w", err)
+	}
+	return true, nil
 }
 
 // Close releases the underlying DB connection.

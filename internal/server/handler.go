@@ -2,12 +2,15 @@ package server
 
 import (
 	"context"
+	"crypto/sha256"
 	"database/sql"
 	"encoding/base64"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
+	"mime"
 	"net/http"
 	"path/filepath"
 	"strconv"
@@ -115,18 +118,35 @@ func (s *Server) handleUpload(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Limit preview size to avoid massive prompt payloads.
-	preview := data
-	if len(preview) > 4*1024 {
-		preview = preview[:4*1024]
+	hash := computeHash(data)
+	seen, err := s.storage.ExistsHash(r.Context(), hash)
+	if err != nil {
+		s.writeError(w, http.StatusInternalServerError, err)
+		return
+	}
+	if seen {
+		s.logger.Warn("duplicate image upload skipped", zap.String("filename", payload.Filename), zap.String("hash", hash))
+		s.writeError(w, http.StatusConflict, fmt.Errorf("image already uploaded"))
+		return
 	}
 
-	meta, err := s.llm.GenerateMetadata(r.Context(), payload.Filename, preview)
+	mimeType := http.DetectContentType(data)
+	if mimeType == "application/octet-stream" {
+		mimeType = mime.TypeByExtension(filepath.Ext(payload.Filename))
+	}
+
+	switch mimeType {
+	case "image/jpeg", "image/jpg", "image/png":
+	default:
+		s.writeError(w, http.StatusBadRequest, fmt.Errorf("unsupported media type: %s", mimeType))
+		return
+	}
+
+	meta, err := s.llm.GenerateMetadata(r.Context(), mimeType, data)
 	if err != nil {
 		s.logger.Info("llm error, served fallback", zap.Error(err))
 	}
 
-	mime := http.DetectContentType(data)
 	now := time.Now()
 	guid := uuid.NewString()
 
@@ -137,8 +157,9 @@ func (s *Server) handleUpload(w http.ResponseWriter, r *http.Request) {
 		Description: meta.Description,
 		GUID:        guid,
 		PubDate:     now,
-		MimeType:    mime,
+		MimeType:    mimeType,
 		Data:        data,
+		Hash:        hash,
 	}
 
 	id, err := s.storage.InsertPin(r.Context(), pin)
@@ -209,7 +230,7 @@ func (s *Server) handleImage(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) writeError(w http.ResponseWriter, code int, err error) {
-	s.logger.Error("request failed", zap.Int("status", code), zap.Error(err))
+	s.logger.Warn("request failed", zap.Int("status", code), zap.Error(err))
 	s.writeJSON(w, code, map[string]string{"error": err.Error()})
 }
 
@@ -220,4 +241,9 @@ func (s *Server) writeJSON(w http.ResponseWriter, code int, v interface{}) {
 	if err := enc.Encode(v); err != nil {
 		s.logger.Error("encode json", zap.Error(err))
 	}
+}
+
+func computeHash(data []byte) string {
+	sum := sha256.Sum256(data)
+	return hex.EncodeToString(sum[:])
 }

@@ -8,7 +8,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"net/http"
+	"strings"
 	"text/template"
 	"time"
 
@@ -21,18 +21,18 @@ import (
 
 const (
 	defaultTemperature = 0.7
-	defaultTimeout     = 30 * time.Second
+	defaultTimeout     = time.Minute
 	defaultPinDescLang = "English"
 )
 
 // LLMClient wraps langchaingo model for metadata generation.
 type LLMClient struct {
-	llm          llms.Model
-	model        string
-	temperature  float64
-	logger       *zap.Logger
-	timeout      time.Duration
-	promptParams config.PromptParams
+	llm         llms.Model
+	model       string
+	temperature float64
+	logger      *zap.Logger
+	timeout     time.Duration
+	prompt      string
 }
 
 //go:embed prompt_template.md
@@ -45,7 +45,7 @@ type Metadata struct {
 }
 
 // NewLLMClient constructs a client using an OpenAI-compatible LLM endpoint.
-func NewLLMClient(apiKey, baseURL, model string, temperature float64, promptParams config.PromptParams, logger *zap.Logger) (*LLMClient, error) {
+func NewLLMClient(apiKey, baseURL, model string, temperature float64, promptParams config.PromptParams, timeout time.Duration, logger *zap.Logger) (*LLMClient, error) {
 	opts := []openai.Option{
 		openai.WithToken(apiKey),
 		openai.WithBaseURL(baseURL),
@@ -63,13 +63,22 @@ func NewLLMClient(apiKey, baseURL, model string, temperature float64, promptPara
 		temperature = defaultTemperature
 	}
 
+	if timeout <= 0 {
+		timeout = defaultTimeout
+	}
+
+	prompt, err := getPrompt(promptParams)
+	if err != nil {
+		logger.Fatal("build prompt failed", zap.Error(err))
+	}
+
 	return &LLMClient{
-		llm:          llm,
-		model:        model,
-		temperature:  temperature,
-		logger:       logger,
-		timeout:      defaultTimeout,
-		promptParams: promptParams,
+		llm:         llm,
+		model:       model,
+		temperature: temperature,
+		logger:      logger,
+		timeout:     timeout,
+		prompt:      prompt,
 	}, nil
 }
 
@@ -92,24 +101,29 @@ func getPrompt(params config.PromptParams) (string, error) {
 }
 
 // GenerateMetadata asks the model for structured metadata. Falls back to deterministic output on failure.
-func (c *LLMClient) GenerateMetadata(ctx context.Context, filename string, preview []byte) (Metadata, error) {
+func (c *LLMClient) GenerateMetadata(ctx context.Context, mimeType string, fileData []byte) (Metadata, error) {
 	ctx, cancel := context.WithTimeout(ctx, c.timeout)
 	defer cancel()
 
-	prompt, err := getPrompt(c.promptParams)
-	if err != nil {
-		c.logger.Fatal("build prompt failed", zap.Error(err))
-	}
+	fileDataBase64 := base64.StdEncoding.EncodeToString(fileData)
 
-	mime := http.DetectContentType(preview)
-	dataURL := "data:" + mime + ";base64," + base64.StdEncoding.EncodeToString(preview)
+	const (
+		dataIdent   = "data:"
+		base64Ident = ";base64,"
+	)
+	dataURL := strings.Builder{}
+	dataURL.Grow(len(dataIdent) + len(base64Ident) + len(fileDataBase64) + len(mimeType))
+	dataURL.WriteString(dataIdent)
+	dataURL.WriteString(mimeType)
+	dataURL.WriteString(base64Ident)
+	dataURL.WriteString(fileDataBase64)
 
 	messages := []llms.MessageContent{
 		{
 			Role: llms.ChatMessageTypeHuman,
 			Parts: []llms.ContentPart{
-				llms.TextPart(prompt),
-				llms.ImageURLPart(dataURL),
+				llms.TextPart(c.prompt),
+				llms.ImageURLPart(dataURL.String()),
 			},
 		},
 	}
@@ -125,9 +139,14 @@ func (c *LLMClient) GenerateMetadata(ctx context.Context, filename string, previ
 		return c.fallback(), errors.New("empty llm response")
 	}
 
+	if len(resp.Choices[0].Content) == 0 {
+		c.logger.Warn("llm returned empty content, using fallback")
+		return c.fallback(), errors.New("empty llm response")
+	}
+
 	var meta Metadata
 	if err := json.Unmarshal([]byte(resp.Choices[0].Content), &meta); err != nil {
-		c.logger.Warn("failed to parse llm json, using fallback", zap.Error(err))
+		c.logger.Warn("failed to parse llm json, using fallback", zap.Error(err), zap.Any("resp", resp))
 		return c.fallback(), err
 	}
 
