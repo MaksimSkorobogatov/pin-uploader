@@ -11,22 +11,28 @@ import (
 
 // ServerConfig represents configuration for the server component.
 type ServerConfig struct {
-	ListenAddress  string        `yaml:"listen_address"`
-	EncryptionKey  string        `yaml:"encryption_key"`
-	PublicBaseURL  string        `yaml:"public_base_url"`
-	DatabasePath   string        `yaml:"database_path"`
-	LLMAPIKey      string        `yaml:"llm_api_key"`
-	LLMBaseURL     string        `yaml:"llm_base_url"`
-	Model          string        `yaml:"llm_model"`
-	Temperature    float64       `yaml:"llm_temperature"`
-	LLMTimeout     time.Duration `yaml:"llm_timeout"`
-	PromptParams   PromptParams  `yaml:"prompt_params"`
-	DefaultPinLink string        `yaml:"default_pin_link"`
+	ListenAddress  string         `yaml:"listen_address"`
+	EncryptionKey  string         `yaml:"encryption_key"`
+	PublicBaseURL  string         `yaml:"public_base_url"`
+	DatabasePath   string         `yaml:"database_path"`
+	LLMAPIKey      string         `yaml:"llm_api_key"`
+	LLMBaseURL     string         `yaml:"llm_base_url"`
+	Model          string         `yaml:"llm_model"`
+	Temperature    float64        `yaml:"llm_temperature"`
+	LLMTimeout     time.Duration  `yaml:"llm_timeout"`
+	PinDescription PinDescription `yaml:"pin_description"`
+	PromptParams   PromptParams   `yaml:"prompt_params"`
+	DefaultPinLink string         `yaml:"default_pin_link"`
+}
+
+type PinDescription struct {
+	Text               string `yaml:"text"`
+	WomanPortraitsOnly bool   `yaml:"woman_portraits_only"`
 }
 
 type PromptParams struct {
-	PinDescriptionLanguage string `yaml:"pin_description_language"`
-	PinTitleLanguage       string `yaml:"pin_title_language"`
+	PinTagsLanguage  string `yaml:"pin_tags_language"`
+	PinTitleLanguage string `yaml:"pin_title_language"`
 }
 
 func DefaultServerConfig() ServerConfig {
@@ -34,8 +40,8 @@ func DefaultServerConfig() ServerConfig {
 		ListenAddress: "localhost:8080",
 		DatabasePath:  "~/.local/share/pin-uploader/db.sqlite",
 		PromptParams: PromptParams{
-			PinTitleLanguage:       "English",
-			PinDescriptionLanguage: "English",
+			PinTitleLanguage: "English",
+			PinTagsLanguage:  "English",
 		},
 	}
 }

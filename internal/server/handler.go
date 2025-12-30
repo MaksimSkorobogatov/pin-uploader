@@ -21,6 +21,7 @@ import (
 	"github.com/google/uuid"
 	"go.uber.org/zap"
 
+	"github.com/MaksimSkorobogatov/pin-uploader/internal/config"
 	appcrypto "github.com/MaksimSkorobogatov/pin-uploader/internal/crypto"
 	"github.com/MaksimSkorobogatov/pin-uploader/internal/transport"
 )
@@ -35,6 +36,7 @@ type Server struct {
 	defaultPinLink string
 	httpSrv        *http.Server
 	shutdown       chan struct{}
+	pinDescription config.PinDescription
 }
 
 // UploadResponse contains metadata echoed back to the client.
@@ -47,7 +49,7 @@ type UploadResponse struct {
 }
 
 // NewServer constructs the HTTP server.
-func NewServer(addr, baseURL, defaultPinLink string, key []byte, storage *Storage, llm *LLMClient, logger *zap.Logger) *Server {
+func NewServer(addr, baseURL, defaultPinLink string, pinDescription config.PinDescription, key []byte, storage *Storage, llm *LLMClient, logger *zap.Logger) *Server {
 	mux := http.NewServeMux()
 	s := &Server{
 		logger:         logger,
@@ -55,6 +57,7 @@ func NewServer(addr, baseURL, defaultPinLink string, key []byte, storage *Storag
 		llm:            llm,
 		key:            key,
 		baseURL:        baseURL,
+		pinDescription: pinDescription,
 		defaultPinLink: defaultPinLink,
 		shutdown:       make(chan struct{}),
 	}
@@ -144,11 +147,18 @@ func (s *Server) handleUpload(w http.ResponseWriter, r *http.Request) {
 	now := time.Now()
 	guid := uuid.NewString()
 
+	var completeDescription strings.Builder
+	if !s.pinDescription.WomanPortraitsOnly || meta.IsWomanPortrait {
+		completeDescription.WriteString(s.pinDescription.Text)
+	}
+	completeDescription.WriteByte('\n')
+	completeDescription.WriteString(meta.Description)
+
 	pin := Pin{
 		Filename:    filepath.Base(payload.Filename),
 		UploadedAt:  now,
 		Title:       meta.Title,
-		Description: meta.Description,
+		Description: completeDescription.String(),
 		GUID:        guid,
 		PubDate:     now,
 		MimeType:    mimeType,

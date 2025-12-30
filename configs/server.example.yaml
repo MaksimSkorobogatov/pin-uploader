@@ -6,9 +6,14 @@ llm_api_key: "REPLACE_WITH_LLM_KEY"
 llm_base_url: "https://api.your-llm-provider.com/v1"
 llm_model: "gemma-3-27b"
 llm_temperature: 0.6
+pin_description:
+  text: >
+    Ты в Москве и хочешь себе такие же кадры или в том же стиле — записывайся на съёмку. Эти фото я сделал для другой, но также и даже лучше сумею сделать и для тебя ☀️
+    Жми на кнопку перехода на сайт — там есть контакты, либо сразу найди меня в тг по нику ma_skor (Максимъ), и просто напиши, я отвечу на все вопросы, всё организую, во всём помогу достичь лучшего результата
+  woman_portraits_only: true
 prompt_params:
   pin_title_language: "English"
-  pin_description_language: "Russian"
+  pin_tags_language: "English"
 llm_timeout: 2m
 # default pin link can contain, for example, a link to your telegram channel
 default_pin_link:

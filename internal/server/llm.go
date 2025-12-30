@@ -22,7 +22,7 @@ import (
 const (
 	defaultTemperature = 0.7
 	defaultTimeout     = time.Minute
-	defaultPinDescLang = "English"
+	defaultPinTagsLang = "English"
 )
 
 // LLMClient wraps langchaingo model for metadata generation.
@@ -40,8 +40,9 @@ var llmPromptTemplate string
 
 // Metadata describes generated AI metadata.
 type Metadata struct {
-	Title       string `json:"title"`
-	Description string `json:"description"`
+	Title           string `json:"title"`
+	Description     string `json:"description"`
+	IsWomanPortrait bool   `json:"is_woman_portrait"`
 }
 
 // NewLLMClient constructs a client using an OpenAI-compatible LLM endpoint.
@@ -85,8 +86,8 @@ func NewLLMClient(apiKey, baseURL, model string, temperature float64, promptPara
 }
 
 func getPrompt(params config.PromptParams) (string, error) {
-	if params.PinDescriptionLanguage == "" {
-		params.PinDescriptionLanguage = defaultPinDescLang
+	if params.PinTagsLanguage == "" {
+		params.PinTagsLanguage = defaultPinTagsLang
 	}
 
 	tpl, err := template.New("prompt").Parse(llmPromptTemplate)

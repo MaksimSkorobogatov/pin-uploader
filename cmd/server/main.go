@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"flag"
 	"net/http"
@@ -28,6 +29,9 @@ func main() {
 		logger.Fatal("load config", zap.Error(err))
 	}
 
+	v, _ := json.MarshalIndent(cfg, "  ", "")
+	println(string(v))
+
 	key, err := config.DecodeKey(cfg.EncryptionKey)
 	if err != nil {
 		logger.Fatal("decode encryption key", zap.Error(err))
@@ -50,7 +54,7 @@ func main() {
 		logger.Fatal("init llm", zap.Error(err))
 	}
 
-	srv := server.NewServer(addr, baseURL, cfg.DefaultPinLink, key, storage, llm, logger)
+	srv := server.NewServer(addr, baseURL, cfg.DefaultPinLink, cfg.PinDescription, key, storage, llm, logger)
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
