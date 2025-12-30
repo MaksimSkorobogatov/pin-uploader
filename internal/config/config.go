@@ -11,18 +11,19 @@ import (
 
 // ServerConfig represents configuration for the server component.
 type ServerConfig struct {
-	ListenAddress  string         `yaml:"listen_address"`
-	EncryptionKey  string         `yaml:"encryption_key"`
-	PublicBaseURL  string         `yaml:"public_base_url"`
-	DatabasePath   string         `yaml:"database_path"`
-	LLMAPIKey      string         `yaml:"llm_api_key"`
-	LLMBaseURL     string         `yaml:"llm_base_url"`
-	Model          string         `yaml:"llm_model"`
-	Temperature    float64        `yaml:"llm_temperature"`
-	LLMTimeout     time.Duration  `yaml:"llm_timeout"`
-	PinDescription PinDescription `yaml:"pin_description"`
-	PromptParams   PromptParams   `yaml:"prompt_params"`
-	DefaultPinLink string         `yaml:"default_pin_link"`
+	ListenAddress        string         `yaml:"listen_address"`
+	MaxConcurrentUploads int            `yaml:"max_concurrent_uploads"`
+	EncryptionKey        string         `yaml:"encryption_key"`
+	PublicBaseURL        string         `yaml:"public_base_url"`
+	DatabasePath         string         `yaml:"database_path"`
+	LLMAPIKey            string         `yaml:"llm_api_key"`
+	LLMBaseURL           string         `yaml:"llm_base_url"`
+	Model                string         `yaml:"llm_model"`
+	Temperature          float64        `yaml:"llm_temperature"`
+	LLMTimeout           time.Duration  `yaml:"llm_timeout"`
+	PinDescription       PinDescription `yaml:"pin_description"`
+	PromptParams         PromptParams   `yaml:"prompt_params"`
+	DefaultPinLink       string         `yaml:"default_pin_link"`
 }
 
 type PinDescription struct {
@@ -37,8 +38,9 @@ type PromptParams struct {
 
 func DefaultServerConfig() ServerConfig {
 	return ServerConfig{
-		ListenAddress: "localhost:8080",
-		DatabasePath:  "~/.local/share/pin-uploader/db.sqlite",
+		ListenAddress:        "localhost:8080",
+		MaxConcurrentUploads: 2,
+		DatabasePath:         "~/.local/share/pin-uploader/db.sqlite",
 		PromptParams: PromptParams{
 			PinTitleLanguage: "English",
 			PinTagsLanguage:  "English",

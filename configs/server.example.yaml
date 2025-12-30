@@ -1,5 +1,6 @@
 listen_address: "localhost:8080"
 public_base_url: "http://localhost:8080"
+max_concurrent_uploads: 2
 encryption_key: "REPLACE_WITH_BASE64_KEY"
 database_path: "/var/lib/pin-uploader/db.sqlite"
 llm_api_key: "REPLACE_WITH_LLM_KEY"

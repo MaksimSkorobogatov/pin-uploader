@@ -32,6 +32,7 @@ type Server struct {
 	key            []byte
 	baseURL        string
 	defaultPinLink string
+	uploadSem      chan struct{}
 	httpSrv        *http.Server
 	shutdown       chan struct{}
 	pinDescription config.PinDescription
@@ -47,8 +48,11 @@ type UploadResponse struct {
 }
 
 // NewServer constructs the HTTP server.
-func NewServer(addr, baseURL, defaultPinLink string, pinDescription config.PinDescription, key []byte, storage *Storage, llm *LLMClient, logger *zap.Logger) *Server {
+func NewServer(addr, baseURL, defaultPinLink string, pinDescription config.PinDescription, key []byte, storage *Storage, llm *LLMClient, maxConcurrentUploads int, logger *zap.Logger) *Server {
 	mux := http.NewServeMux()
+	if maxConcurrentUploads <= 0 {
+		maxConcurrentUploads = 2
+	}
 	s := &Server{
 		logger:         logger,
 		storage:        storage,
@@ -57,6 +61,7 @@ func NewServer(addr, baseURL, defaultPinLink string, pinDescription config.PinDe
 		baseURL:        baseURL,
 		pinDescription: pinDescription,
 		defaultPinLink: defaultPinLink,
+		uploadSem:      make(chan struct{}, maxConcurrentUploads),
 		shutdown:       make(chan struct{}),
 	}
 
@@ -89,6 +94,14 @@ func (s *Server) Shutdown(ctx context.Context) error {
 func (s *Server) handleUpload(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	select {
+	case s.uploadSem <- struct{}{}:
+		defer func() { <-s.uploadSem }()
+	default:
+		s.writeError(w, http.StatusTooManyRequests, fmt.Errorf("too many concurrent uploads"))
 		return
 	}
 

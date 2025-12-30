@@ -81,6 +81,7 @@ Items include the generated title/description, GUID, pubDate, and an enclosure p
 
 ## Notes
 - Encryption: chunked AES-256-GCM with per-chunk authentication, allowing on-the-fly decryption and early rejection of invalid data. Use the same base64 key on both sides.
+- Uploads: concurrency-limited on the server (`max_concurrent_uploads`, default `2`).
 - LLM: OpenAI-compatible via `langchaingo` (`llm_base_url`, `llm_api_key`, `llm_model`, `llm_temperature`). Prompt lives in `internal/server/prompt_template.md`; update `pin_description_language` to change the description language while keeping tags in English.
 - Preview size: only the first 4 KB of the image is sent to the LLM to keep prompts small; full image is stored and served via RSS/enclosures.
 - Fallback: if the LLM call or JSON parsing fails, the server returns a simple deterministic title/description and logs the issue.
