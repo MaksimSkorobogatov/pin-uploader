@@ -3,7 +3,6 @@ package client
 import (
 	"bytes"
 	"context"
-	"encoding/gob"
 	"encoding/json"
 	"fmt"
 	"image"
@@ -110,23 +109,23 @@ func (u *Uploader) UploadFile(ctx context.Context, path string, pinLink *string)
 			zap.Int("longest_after", resized.After))
 	}
 
-	payload := transport.UploadPayload{
+	plain, err := transport.NewUploadPlaintextReader(transport.UploadHeader{
 		Filename: filepath.Base(path),
-		Data:     data,
 		PinLink:  pinLink,
-	}
-
-	var buf bytes.Buffer
-	if err := gob.NewEncoder(&buf).Encode(payload); err != nil {
+	}, data)
+	if err != nil {
 		return UploadResult{Path: path, Error: fmt.Errorf("encode payload: %w", err)}
 	}
 
-	cipher, err := appcrypto.Encrypt(u.key, buf.Bytes())
-	if err != nil {
-		return UploadResult{Path: path, Error: fmt.Errorf("encrypt: %w", err)}
-	}
+	pr, pw := io.Pipe()
+	go func() {
+		err := pw.CloseWithError(appcrypto.EncryptStream(u.key, pw, plain))
+		if err != nil {
+			u.logger.Error("failed to encrypt payload", zap.Error(err))
+		}
+	}()
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, u.serverURL+"/rss/upload", bytes.NewReader(cipher))
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, u.serverURL+"/rss/upload", pr)
 	if err != nil {
 		return UploadResult{Path: path, Error: fmt.Errorf("build request: %w", err)}
 	}

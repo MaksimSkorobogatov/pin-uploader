@@ -20,6 +20,10 @@ func main() {
 	pinLink := flag.String("link", "", "the link where the pin will lead to")
 	flag.Parse()
 
+	if *pinLink == "" {
+		pinLink = nil
+	}
+
 	logger, _ := zap.NewProduction()
 	defer logger.Sync()
 

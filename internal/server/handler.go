@@ -1,11 +1,9 @@
 package server
 
 import (
-	"bytes"
 	"context"
 	"crypto/sha256"
 	"database/sql"
-	"encoding/gob"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -94,26 +92,33 @@ func (s *Server) handleUpload(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	body, err := io.ReadAll(io.LimitReader(r.Body, 5<<20)) // 5MB cap
-	if err != nil {
-		s.writeError(w, http.StatusBadRequest, fmt.Errorf("read body: %w", err))
-		return
-	}
 	defer r.Body.Close()
 
-	plaintext, err := appcrypto.Decrypt(s.key, body)
+	// Hard cap encrypted request size to avoid buffering/DoS.
+	// Plaintext max is transport.MaxHeaderBytes + 8 + transport.MaxImageBytes.
+	r.Body = http.MaxBytesReader(w, r.Body, 6<<20)
+
+	plaintext, err := appcrypto.NewDecryptReader(s.key, r.Body)
 	if err != nil {
-		s.writeError(w, http.StatusBadRequest, fmt.Errorf("decrypt payload: %w", err))
+		code := http.StatusBadRequest
+		var maxErr *http.MaxBytesError
+		if errors.As(err, &maxErr) {
+			code = http.StatusRequestEntityTooLarge
+		}
+		s.writeError(w, code, fmt.Errorf("decrypt payload: %w", err))
 		return
 	}
 
-	var payload transport.UploadPayload
-	if err := gob.NewDecoder(bytes.NewReader(plaintext)).Decode(&payload); err != nil {
-		s.writeError(w, http.StatusBadRequest, fmt.Errorf("decode payload: %w", err))
+	header, data, err := transport.DecodeUploadPlaintext(plaintext)
+	if err != nil {
+		code := http.StatusBadRequest
+		var maxErr *http.MaxBytesError
+		if errors.As(err, &maxErr) {
+			code = http.StatusRequestEntityTooLarge
+		}
+		s.writeError(w, code, fmt.Errorf("decode payload: %w", err))
 		return
 	}
-
-	data := payload.Data
 
 	hash := computeHash(data)
 	seen, err := s.storage.ExistsHash(r.Context(), hash)
@@ -122,14 +127,14 @@ func (s *Server) handleUpload(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if seen {
-		s.logger.Warn("duplicate image upload skipped", zap.String("filename", payload.Filename), zap.String("hash", hash))
+		s.logger.Warn("duplicate image upload skipped", zap.String("filename", header.Filename), zap.String("hash", hash))
 		s.writeError(w, http.StatusConflict, fmt.Errorf("image already uploaded"))
 		return
 	}
 
 	mimeType := http.DetectContentType(data)
 	if mimeType == "application/octet-stream" {
-		mimeType = mime.TypeByExtension(filepath.Ext(payload.Filename))
+		mimeType = mime.TypeByExtension(filepath.Ext(header.Filename))
 	}
 
 	switch mimeType {
@@ -155,7 +160,7 @@ func (s *Server) handleUpload(w http.ResponseWriter, r *http.Request) {
 	completeDescription.WriteString(meta.Description)
 
 	pin := Pin{
-		Filename:    filepath.Base(payload.Filename),
+		Filename:    filepath.Base(header.Filename),
 		UploadedAt:  now,
 		Title:       meta.Title,
 		Description: completeDescription.String(),
@@ -164,7 +169,7 @@ func (s *Server) handleUpload(w http.ResponseWriter, r *http.Request) {
 		MimeType:    mimeType,
 		Data:        data,
 		Hash:        hash,
-		Link:        payload.PinLink,
+		Link:        header.PinLink,
 	}
 
 	id, err := s.storage.InsertPin(r.Context(), pin)

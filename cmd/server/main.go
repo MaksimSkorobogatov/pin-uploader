@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"flag"
 	"net/http"
@@ -28,9 +27,6 @@ func main() {
 	if err != nil {
 		logger.Fatal("load config", zap.Error(err))
 	}
-
-	v, _ := json.MarshalIndent(cfg, "  ", "")
-	println(string(v))
 
 	key, err := config.DecodeKey(cfg.EncryptionKey)
 	if err != nil {
